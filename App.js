@@ -59,16 +59,17 @@ export default class App extends React.Component {
             y: data.y,
             z: data.z
         },
-        gyroData: [...state.gyroData, {
-            x: data.x,
-            y: data.y,
-            z: data.z
-        }]}), () => {
-                if (this.state.gyroData.length > 500) {
+        ...(state.recording ?
+            {
+                gyroData: [...state.gyroData, {
+                timestamp: Date.now(),
+                data: [data.x, data.y, data.z],
+                label: state.useLabel ? state.label : ''}]
+            } : {} )}), () => {
+                if (this.state.gyroData.length > 1000) {
                     if (this.state.recording){
-                    this.state.db.collection("gyro").add({
-                            ...(this.state.useLabel ? {label: this.state.label} : {} ),
-                            arr: this.state.gyroData
+                    this.state.db.collection("sensors").doc('gyro').update({
+                            data: firebase.firestore.FieldValue.arrayUnion(...this.state.gyroData)
                         }
                     )
                     this.setState({gyroData:[]})
@@ -81,21 +82,22 @@ export default class App extends React.Component {
   accUpdate(data){
     this.setState(state => ({
         currAcc: {
+
         x: data.x,
         y: data.y,
         z: data.z
     },
-        accData: [...state.accData, {
-            x: data.x,
-            y: data.y,
-            z: data.z
-        }]
-    }), () => {
-        if (this.state.accData.length > 500) {
+        ...(state.recording ?
+            {
+                accData: [...state.accData, {
+                    timestamp: Date.now(),
+                    data: [data.x, data.y, data.z],
+                    label: state.useLabel ? state.label : ''}]
+            } : {} )}), () => {
+        if (this.state.accData.length > 1000) {
             if (this.state.recording){
-                this.state.db.collection("acc").add({
-                    ...(this.state.useLabel ? {label: this.state.label} : {} ),
-                    arr: this.state.accData
+                this.state.db.collection("sensors").doc('accelerometer').update({
+                    data: firebase.firestore.FieldValue.arrayUnion(...this.state.accData)
                 })
                 this.setState({accData:[]})
             }
@@ -121,12 +123,12 @@ export default class App extends React.Component {
         </View>
         <View style={styles.rowContainer}>
           <Text style={styles.text}>Record</Text>
-          <Switch value={this.state.recording} onValueChange={() => this.setState({recording: !this.state.recording})}/>
+          <Switch value={this.state.recording} onValueChange={() => this.setState({recording: !this.state.recording, accData:[], gyroData:[]})}/>
         </View>
         <View style={styles.rowColContainer}>
           <Text style={[styles.text]}>Current Gyro Values {this.state.gyroData.length}</Text>
             {
-                this.state.currGyro ? <Text style={styles.values}>{`[${this.state.currAcc.x}, ${this.state.currAcc.y}, ${this.state.currAcc.z}] `}</Text> : null
+                this.state.currGyro ? <Text style={styles.values}>{`[${this.state.currGyro.x}, ${this.state.currGyro.y}, ${this.state.currGyro.z}] `}</Text> : null
             }
         </View>
         <View style={styles.rowColContainer}>
@@ -162,7 +164,7 @@ const styles = StyleSheet.create({
         margin:10
     },
     values: {
-        fontSize: 20,
+        fontSize: 10,
         color:'red'
     },
     input: {
